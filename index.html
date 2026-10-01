@@ -1,4 +1,23 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}.brand h1 a{color:inherit;text-decoration:none;cursor:pointer}
+.infogrid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:12px}
+@media (max-width:560px){.infogrid2{grid-template-columns:minmax(0,1fr)}}
+.emojis{display:flex;flex-wrap:wrap;gap:6px}
+.emojis button{width:40px;height:40px;min-height:0;padding:0;border-radius:50%;border:1.5px solid var(--rule);background:var(--sheet);font-size:22px;line-height:1;display:grid;place-items:center}
+.emojis button[aria-checked=true]{border-color:var(--omr);background:var(--omr-soft);box-shadow:0 0 0 2px var(--omr)}
+.twq{width:100%}
+.kchips{display:flex;flex-wrap:wrap;gap:6px}
+.kchip{min-height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--rule);background:var(--paper);font-size:13px}
+.kchip[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.grphead{font-weight:700;font-size:13px;margin:6px 0}
+.gsum{margin:0 0 6px}
+.gbars{display:flex;align-items:flex-end;gap:10px;overflow-x:auto;padding:8px 2px}
+.gbar{flex:none;width:68px;min-height:0;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 4px;border:1px solid transparent;border-radius:10px;background:none;font-size:11px;color:var(--muted)}
+.gbar[aria-pressed=true]{border-color:var(--ink);background:var(--paper)}
+.gbar .col{width:26px;height:64px;display:flex;align-items:flex-end;background:var(--paper);border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+.gbar .fill{width:100%;background:var(--omr)}
+.gbar b{color:var(--ink);font-size:13px}
+.avatar{font-size:26px}
+</style></head><body>
 <title>Text Level Changer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -173,7 +192,7 @@ details.mat>summary{cursor:pointer;font-weight:600}
   <header class="top">
     <div class="brand">
       <small>맞춤 영어 학습 자료</small>
-      <h1>Text Level Changer</h1>
+      <h1><a href="./" id="home" title="처음으로">Text Level Changer</a></h1>
     </div>
     <div class="tw" id="tw"></div>
   </header>
@@ -199,7 +218,11 @@ details.mat>summary{cursor:pointer;font-weight:600}
         <div class="who"><label for="grade">학년</label>
           <select id="grade" class="field"><option value="">학년 선택</option><option>초6</option><option>중1</option><option>중2</option><option>중3</option><option>고1</option><option>고2</option><option>고3</option></select></div>
       </div>
-      <p class="small muted">닉네임과 학년은 학습 기록을 선생님 목록에 저장하고, 지문 수준과 비교하는 데 쓰여요. 닉네임은 반에서 겹치지 않게 써 주세요.</p>
+      <div class="infogrid2">
+        <div class="who"><label for="klass">반 <span class="muted">(선택)</span></label><input id="klass" class="field" type="text" maxlength="20" placeholder="예: 중3 A반" autocomplete="off"></div>
+        <div class="who"><span class="lbl" id="emlbl">나를 나타내는 이모지 <span class="muted">(선택 · 안 고르면 자동)</span></span><div class="emojis" id="emojis" role="radiogroup" aria-labelledby="emlbl"></div></div>
+      </div>
+      <p class="small muted">닉네임, 학년, 반은 학습 기록을 선생님 목록에 저장하고, 지문 수준과 비교하는 데 쓰여요. 닉네임은 반에서 겹치지 않게 써 주세요.</p>
     </div>
     <div>
       <label class="lbl" for="title">지문 제목 <span class="muted">(선택)</span></label>
@@ -353,8 +376,12 @@ async function postGenerate(prompt, signal, retried){
 }
 let sample = {
   async json(prompt, opts){
-    const text = await postGenerate(prompt, opts && opts.signal);
-    return parseModelJson(text);
+    // 응답 형식이 깨졌을 때(드물게 발생) 자동으로 한 번 더 시도합니다.
+    for(let i=0;;i++){
+      const text = await postGenerate(prompt, opts && opts.signal);
+      try{ return parseModelJson(text); }
+      catch(e){ if(e.code==="invalid_json" && i<1) continue; throw e; }
+    }
   }
 };
 let downloads = {
@@ -557,7 +584,7 @@ function renderTest(){
   $("#s2").innerHTML = `
     <div class="row" style="justify-content:space-between">
       <h2>진단 평가</h2>
-      <div class="row"><button class="btn" type="button" id="dlTest">시험지 내려받기</button><button class="btn primary" type="button" id="toAns">학생 답안 입력 →</button></div>
+      <div class="row"><button class="btn" type="button" id="dlTest">시험지 내려받기 (.html)</button><button class="btn" type="button" id="dlTestPdf">시험지 PDF로 저장</button><button class="btn primary" type="button" id="toAns">학생 답안 입력 →</button></div>
     </div>
     ${S.testIsExample?`<p class="note">예시 시험지예요. STEP 1에서 지문을 넣고 “진단 평가 만들기”를 누르면 새 시험지가 만들어져요.</p>`:""}
     <p><span class="chip">지문 구문 수준(추정): ${esc(T.estimatedLevel)}</span> <span class="small muted">${esc(T.estimateReasonKo)}</span></p>
@@ -573,6 +600,7 @@ function renderTest(){
     <div class="qs">${T.questions.map((q,i)=>qHTML(q,i+1,false)).join("")}</div>
     <div id="s2msg"></div>`;
   $("#toAns").onclick = ()=>go(3);
+  $("#dlTestPdf").onclick = ()=> savePdf(`${title()}_진단평가`, docWrap(`진단 평가`, $("#s2").querySelector(".paper-head").outerHTML + $("#s2").querySelector(".passage").outerHTML + $("#s2").querySelector(".qs").outerHTML), $("#s2msg"));
   $("#dlTest").onclick = ()=> saveDoc(`${title()}_진단평가.html`, docWrap(`진단 평가`, $("#s2").querySelector(".paper-head").outerHTML + $("#s2").querySelector(".passage").outerHTML + $("#s2").querySelector(".qs").outerHTML), $("#s2msg"));
 }
 
@@ -654,7 +682,7 @@ function renderMaterials(){
       ${!sample?`<span class="small muted">AI 생성을 사용할 수 없는 화면이에요.</span>`:""}</div>
     ${S.materials?`<div class="row" style="justify-content:space-between;border-top:1px solid var(--rule);padding-top:16px">
       <div class="viewtoggle" role="group" aria-label="보기"><button type="button" data-view="student" aria-pressed="${S.view==="student"}">학생용</button><button type="button" data-view="key" aria-pressed="${S.view==="key"}">교사용 (정답·해설)</button></div>
-      <div class="row"><button type="button" class="btn" id="copyBtn">텍스트 복사</button><button type="button" class="btn" id="dlBtn">내려받기 (.html)</button></div></div>
+      <div class="row"><button type="button" class="btn" id="copyBtn">텍스트 복사</button><button type="button" class="btn" id="dlBtn">내려받기 (.html)</button><button type="button" class="btn" id="dlBtnPdf">PDF로 저장</button></div></div>
       <div id="s4msg"></div>`:""}
     <div id="sheet">${out}</div>`;
   const s4=$("#s4");
@@ -666,6 +694,7 @@ function renderMaterials(){
   s4.querySelectorAll("[data-view]").forEach(b=> b.onclick=()=>{ S.view=b.dataset.view; renderMaterials(); });
   $("#genMat").onclick = genMaterials;
   const cb=$("#copyBtn"); if(cb) cb.onclick = copySheet;
+  const dbp=$("#dlBtnPdf"); if(dbp) dbp.onclick = ()=> savePdf(`${title()}_${LEVELS[S.matLevel].label}_${S.view==="key"?"교사용":"학생용"}`, docWrap(`${LEVELS[S.matLevel].label} 학습 자료`, sheetHTML(S.view==="key")), $("#s4msg"));
   const db=$("#dlBtn"); if(db) db.onclick = ()=> saveDoc(`${title()}_${LEVELS[S.matLevel].label}_${S.view==="key"?"교사용":"학생용"}.html`, docWrap(`${LEVELS[S.matLevel].label} 학습 자료`, sheetHTML(S.view==="key")), $("#s4msg"));
 }
 
@@ -797,8 +826,28 @@ body{font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;color:#111;max
 .key{background:#EEF3FA;color:#1b3f78;padding:6px 8px;margin-top:4px;font-size:13px}.ev{display:block;color:#555}
 .sec{border-top:1px solid #ccc;padding-top:12px;margin-top:14px}h3{margin:0 0 8px}.en{font-size:11px;color:#777;margin-left:6px;font-weight:normal}
 table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #ddd;padding:5px 6px;text-align:left;vertical-align:top}.line{display:inline-block;min-width:90px;border-bottom:1px solid #111}.write{height:26px;border-bottom:1px dotted #999}.chip{color:#1b3f78;font-weight:bold}
-@media print{body{margin:0}}
+body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@media print{body{margin:0;max-width:none}}@page{margin:14mm}
 </style></head><body>${inner}</body></html>`;
+}
+function savePdf(name, html, msgEl){
+  try{
+    const f=document.createElement("iframe");
+    f.setAttribute("aria-hidden","true");
+    f.style.cssText="position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+    document.body.appendChild(f);
+    const d=f.contentWindow.document; d.open(); d.write(html); d.close();
+    const oldTitle=document.title, clean=()=>{ document.title=oldTitle; setTimeout(()=>f.remove(), 500); };
+    setTimeout(()=>{
+      try{
+        document.title=String(name).replace(/[\\/:*?"<>|]/g,"_");
+        f.contentWindow.addEventListener("afterprint", clean);
+        f.contentWindow.focus(); f.contentWindow.print();
+        setTimeout(()=>{ if(document.title!==oldTitle) clean(); }, 120000);
+      }catch(e){ clean(); }
+    }, 400);
+    msgEl.innerHTML=`<p class="note ok">인쇄 창이 열리면 <b>대상(프린터)을 “PDF로 저장”</b>으로 고르고 저장하세요.</p>`;
+  }catch(e){ msgEl.innerHTML=`<p class="note bad">PDF 창을 열지 못했어요. “내려받기 (.html)”를 이용해 주세요.</p>`; }
 }
 async function saveDoc(filename, html, msgEl){
   if(!downloads){ msgEl.innerHTML=`<p class="note">이 화면에서는 내려받기를 사용할 수 없어요. “텍스트 복사”를 이용하세요.</p>`; return; }
@@ -831,10 +880,10 @@ function sessionPayload(){
 async function doSave(){
   const nick=$("#student").value.trim(), grade=gradeVal();
   if(S.testIsExample || !S.sessionId || !nick || !grade) return;
-  const key = JSON.stringify([S.sessionId, nick, grade, S.answers, Object.keys(S.sessionMaterials).map(k=>k+S.sessionMaterials[k].createdAt)]);
+  const key = JSON.stringify([S.sessionId, nick, grade, klassVal(), selEmoji(), S.answers, Object.keys(S.sessionMaterials).map(k=>k+S.sessionMaterials[k].createdAt)]);
   if(key===S.lastSaved) return;
   try{
-    const r = await fetch("/api/students", {method:"POST", headers:{"Content-Type":"application/json","x-access-code":lsGet("tlc_code")}, body:JSON.stringify({action:"save", nickname:nick, grade, session:sessionPayload()})});
+    const r = await fetch("/api/students", {method:"POST", headers:{"Content-Type":"application/json","x-access-code":lsGet("tlc_code")}, body:JSON.stringify({action:"save", nickname:nick, grade, klass:klassVal(), emoji:selEmoji(), session:sessionPayload()})});
     if(r.ok){ S.lastSaved=key; S.saveState="ok"; } else { S.saveState = r.status===503 ? "off" : "fail"; }
   }catch(e){ S.saveState="fail"; }
   showSaveState();
@@ -847,6 +896,11 @@ function showSaveState(){
 
 /* ---------- 선생님 위젯 (오른쪽 위) ---------- */
 const ANIMALS = ["🐰","🐻","🐼","🦊","🐱","🐶","🐨","🐯","🐸","🐥","🐹","🦁"];
+const EMOJIS = ["🐰","🐻","🐼","🦊","🐱","🐶","🐨","🐯","🐸","🐥","🐹","🦁","🦄","🐙","🐳","🦉","🐧","🐢","🦋","🍓","🍑","🍋","⭐","🌈"];
+function selEmoji(){ const b=document.querySelector("#emojis [aria-checked=true]"); return b ? b.dataset.e : ""; }
+function setEmoji(e){ document.querySelectorAll("#emojis button").forEach(b=>b.setAttribute("aria-checked", String(!!e && b.dataset.e===e))); }
+function klassVal(){ const k=$("#klass"); return k ? k.value.trim().slice(0,20) : ""; }
+function avatarOf(st){ return st.emoji || animal(st.nickname); }
 function animal(n){ let h=0; for(const ch of String(n)) h=(h*31+ch.codePointAt(0))>>>0; return ANIMALS[h%ANIMALS.length]; }
 function agoText(iso){ const t=new Date(iso).getTime(); if(!t) return ""; const m=Math.round((Date.now()-t)/60000); if(m<1) return "방금"; if(m<60) return m+"분 전"; const h=Math.round(m/60); if(h<24) return h+"시간 전"; return Math.round(h/24)+"일 전"; }
 function fmtDate(iso){ const d=new Date(iso); if(isNaN(d)) return ""; return d.getFullYear()+"."+String(d.getMonth()+1).padStart(2,"0")+"."+String(d.getDate()).padStart(2,"0"); }
@@ -874,22 +928,46 @@ async function tapi(body, retried){
   if(!r.ok) throw apiError("server");
   return r.json();
 }
-const tw=$("#tw"); let twOpen=false, twData=null, twErr="", twBusy=false;
+const tw=$("#tw"); let twOpen=false, twData=null, twErr="", twBusy=false, twQ="", twK="all";
+function cardHTML(st){
+  const s=stateOf(st);
+  return `<button type="button" class="stcard" data-nick="${esc(st.nickname)}"><span class="av" aria-hidden="true">${avatarOf(st)}</span><div><div class="nm">${esc(st.nickname)} <span class="chip ${s.cls}">${esc(s.txt)}</span></div><div class="meta2">${st.klass?esc(st.klass)+" · ":""}${agoText(st.updatedAt)}</div></div></button>`;
+}
+function listHTML(){
+  const q=twQ.trim().toLowerCase();
+  const rows=(twData||[]).filter(st=> (twK==="all" || (twK==="__none" ? !st.klass : st.klass===twK)) && (!q || String(st.nickname).toLowerCase().includes(q) || String(st.klass||"").toLowerCase().includes(q)));
+  if(!rows.length) return `<p class="muted small">${twData && twData.length ? "조건에 맞는 학생이 없어요." : "아직 기록된 학생이 없어요. 학생이 진단 평가를 시작하면 여기에 나타나요."}</p>`;
+  const ks=[...new Set(rows.map(r=>r.klass||""))];
+  if(ks.length<=1) return `<div class="stlist">${rows.map(cardHTML).join("")}</div>`;
+  ks.sort((x,y)=> x===""?1 : y===""?-1 : x.localeCompare(y,"ko"));
+  return ks.map(k=>{ const g=rows.filter(r=>(r.klass||"")===k); return `<div class="grp"><div class="grphead">${k?esc(k):"반 없음"} <span class="muted small">${g.length}명</span></div><div class="stlist">${g.map(cardHTML).join("")}</div></div>`; }).join("");
+}
+function bindCards(){
+  tw.querySelectorAll("[data-nick]").forEach(b=> b.onclick=()=>{ twOpen=false; renderTW(); location.hash="#student="+encodeURIComponent(b.dataset.nick); });
+}
 function renderTW(){
   const unlocked=!!lsGet("tlc_teacher");
   let h = `<button type="button" class="twbtn" id="twBtn" aria-expanded="${twOpen}">${unlocked ? "🐣 학생 "+(twData?twData.length+"명":"목록") : "🔒 선생님"}</button>`;
   if(twOpen && (unlocked || twErr)){
-    const list = twErr ? `<p class="note bad small">${esc(twErr)}</p>`
-      : (twBusy && !twData) ? `<p class="muted small">불러오는 중…</p>`
-      : (twData && twData.length) ? `<div class="stlist">${twData.map(st=>{ const s=stateOf(st); return `<button type="button" class="stcard" data-nick="${esc(st.nickname)}"><span class="av" aria-hidden="true">${animal(st.nickname)}</span><div><div class="nm">${esc(st.nickname)} <span class="chip gray">${esc(st.grade||"-")}</span> <span class="chip ${s.cls}">${esc(s.txt)}</span></div><div class="meta2">${esc(((st.sessions||[])[0]||{}).title||"")} · ${agoText(st.updatedAt)}</div></div></button>`; }).join("")}</div>`
-      : `<p class="muted small">아직 기록된 학생이 없어요. 학생이 진단 평가를 시작하면 여기에 나타나요.</p>`;
-    h += `<div class="twpanel" role="dialog" aria-label="학생 목록"><div class="twhead"><b>🐣 우리 반 학생들</b><span class="row"><button type="button" class="btn quiet" id="twRef">새로고침</button><button type="button" class="btn quiet" id="twLock">잠금</button></span></div>${list}</div>`;
+    let body;
+    if(twErr) body = `<p class="note bad small">${esc(twErr)}</p>`;
+    else if(twBusy && !twData) body = `<p class="muted small">불러오는 중…</p>`;
+    else {
+      const ks=[...new Set((twData||[]).map(x=>x.klass).filter(Boolean))].sort((x,y)=>x.localeCompare(y,"ko"));
+      const hasNone=(twData||[]).some(x=>!x.klass);
+      const chips = ks.length ? `<div class="kchips">${[["all","전체"],...ks.map(k=>[k,k]),...(hasNone?[["__none","반 없음"]]:[])].map(([v,l])=>`<button type="button" class="kchip" data-k="${esc(v)}" aria-pressed="${twK===v}">${esc(l)}</button>`).join("")}</div>` : "";
+      const search = (twData&&twData.length) ? `<input id="twQ" class="field twq" type="search" placeholder="닉네임·반 검색" value="${esc(twQ)}" autocomplete="off">` : "";
+      body = search + chips + `<div id="twList">${listHTML()}</div>`;
+    }
+    h += `<div class="twpanel" role="dialog" aria-label="학생 목록"><div class="twhead"><b>🐣 우리 반 학생들</b><span class="row"><button type="button" class="btn quiet" id="twRef">새로고침</button><button type="button" class="btn quiet" id="twLock">잠금</button></span></div>${body}</div>`;
   }
   tw.innerHTML=h;
   $("#twBtn").onclick = onTwBtn;
   const rf=$("#twRef"); if(rf) rf.onclick=loadTW;
   const lk=$("#twLock"); if(lk) lk.onclick=()=>{ lsSet("tlc_teacher",""); twOpen=false; twData=null; twErr=""; renderTW(); if(/^#student=/.test(location.hash)) location.hash=""; };
-  tw.querySelectorAll("[data-nick]").forEach(b=> b.onclick=()=>{ twOpen=false; renderTW(); location.hash="#student="+encodeURIComponent(b.dataset.nick); });
+  const q=$("#twQ"); if(q) q.oninput=()=>{ twQ=q.value; $("#twList").innerHTML=listHTML(); bindCards(); };
+  tw.querySelectorAll("[data-k]").forEach(b=> b.onclick=()=>{ twK=b.dataset.k; renderTW(); });
+  bindCards();
 }
 async function loadTW(){
   twBusy=true; twErr=""; renderTW();
@@ -905,6 +983,23 @@ async function onTwBtn(){
   twOpen=!twOpen; renderTW(); if(twOpen) loadTW();
 }
 document.addEventListener("click", e=>{ if(twOpen && !e.composedPath().includes(tw)){ twOpen=false; renderTW(); } });
+
+/* ---------- 성장 한눈에 보기 ---------- */
+function lvLabel(x){ return x.matLevel && LEVELS[x.matLevel] ? LEVELS[x.matLevel].label : (x.direction && LEVELS[x.direction] ? LEVELS[x.direction].label : ""); }
+function growthInfo(st){
+  const arr=[...(st.sessions||[])].sort((a,b)=>Number(a.id)-Number(b.id));
+  const scored=arr.filter(x=>x.total!=null);
+  const lv=arr.map(lvLabel).filter(Boolean).filter((v,i,a)=>i===0||v!==a[i-1]);
+  let trend="";
+  if(scored.length>=2){ const d=scored[scored.length-1].total-scored[0].total; trend = d>0 ? "📈 점수가 오르고 있어요" : d<0 ? "📉 처음보다 점수가 낮아요. 틀린 유형을 같이 복습해 주세요" : "➖ 점수가 비슷해요"; }
+  const text = arr.length+"회 연습" + (scored.length ? ": "+scored.map(x=>x.total+"/8").join(" → ") : "") + (lv.length ? " · "+(lv.length>1 ? lv.join(" → ") : lv[0]+" 유지") : "");
+  return {arr, text, trend};
+}
+function growthHTML(st){
+  const g=growthInfo(st); if(!g.arr.length) return "";
+  const md=iso=>{ const d=new Date(iso); return isNaN(d)?"":(d.getMonth()+1)+"/"+d.getDate(); };
+  return `<div class="sec growth"><h3>성장 한눈에 보기</h3><p class="gsum"><b>${esc(g.text)}</b></p>${g.trend?`<p class="small muted" style="margin:0 0 4px">${esc(g.trend)}</p>`:""}<div class="gbars">${g.arr.map(x=>`<button type="button" class="gbar" data-sid="${esc(x.id)}" aria-pressed="${REP.sel===x.id}" title="${esc(x.title||"")}"><b>${x.total!=null?x.total+"/8":"-"}</b><span class="col"><span class="fill" style="height:${x.total!=null?Math.round(x.total/8*100):0}%"></span></span><span>${md(x.date)}</span><span>${esc(lvLabel(x)||"진단 중")}</span><span>지문 ${esc(x.passageLevel||"?")}</span></button>`).join("")}</div></div>`;
+}
 
 /* ---------- 학생 상세 리포트 (선생님용) ---------- */
 let REP = null;
@@ -927,7 +1022,8 @@ function dirText(R){ return R.toG2 ? "올라가기 → 고2" : "기초 다지기
 function reportDoc(st, ses){
   return withOV(st, ses, ()=>{
     const R=ses.result;
-    let inner = `<div class="paper-head"><h3>${esc(st.nickname)} (${esc(st.grade||"-")}) · 학습 리포트</h3><span class="meta">${esc(ses.title)} · ${fmtDate(ses.date)}</span></div>`;
+    let inner = `<div class="paper-head"><h3>${esc(st.nickname)} (${esc((st.klass?st.klass+" · ":"")+(st.grade||"-"))}) · 학습 리포트</h3><span class="meta">${esc(ses.title)} · ${fmtDate(ses.date)}</span></div>`;
+    inner += `<p>${esc(growthInfo(st).text)}</p>`;
     inner += `<p>지문 구문 수준(추정): <b>${esc(ses.passageLevel||"?")}</b> · 학생 학년: <b>${esc(st.grade||"-")}</b></p>`;
     if(R){
       inner += `<h3>진단 결과 ${R.total}/8 · 추천 방향: ${esc(dirText(R))}</h3><table><thead><tr>${TYPES.map(t=>`<th>${TYPE_KO[t]}</th>`).join("")}</tr></thead><tbody><tr>${TYPES.map(t=>`<td>${R.c[t]}/${R.tot[t]}</td>`).join("")}</tr></tbody></table>`;
@@ -946,7 +1042,7 @@ function sessionDetailHTML(st, ses){
   if(!ses) return `<p class="muted">기록을 불러오는 중…</p>`;
   if(ses.error) return `<p class="note bad">이 기록을 불러오지 못했어요.</p>`;
   const R=ses.result;
-  let h = `<div class="sec"><div class="row" style="justify-content:space-between"><h3>${esc(ses.title)} <span class="small muted">${fmtDate(ses.date)}</span></h3><div class="row"><button type="button" class="btn" id="repDlTest">진단 시험지(교사용)</button><button type="button" class="btn primary" id="repDl">리포트·자료 내려받기 (.html)</button></div></div><div id="repMsg"></div>${compareHTML(ses.passageLevel, st.grade)}`;
+  let h = `<div class="sec"><div class="row" style="justify-content:space-between"><h3>${esc(ses.title)} <span class="small muted">${fmtDate(ses.date)}</span></h3><div class="row"><button type="button" class="btn" id="repDlTest">진단 시험지(교사용)</button><button type="button" class="btn" id="repDlTestPdf">시험지 PDF</button><button type="button" class="btn primary" id="repDl">리포트·자료 (.html)</button><button type="button" class="btn primary" id="repDlPdf">리포트·자료 PDF</button></div></div><div id="repMsg"></div>${compareHTML(ses.passageLevel, st.grade)}`;
   if(ses.estimateReasonKo) h += `<p class="small muted">${esc(ses.estimateReasonKo)}</p>`;
   h += `</div>`;
   if(R){
@@ -960,7 +1056,7 @@ function sessionDetailHTML(st, ses){
   }
   const lvs = ["j1","j3","g2"].filter(k=>ses.materials && ses.materials[k]);
   h += `<div class="sec"><div class="row" style="justify-content:space-between"><h3>학습 자료</h3><div class="viewtoggle" role="group" aria-label="보기"><button type="button" data-rview="student" aria-pressed="${REP.view==="student"}">학생용</button><button type="button" data-rview="key" aria-pressed="${REP.view==="key"}">교사용 (정답·해설)</button></div></div>`;
-  h += lvs.length ? lvs.map(k=>`<details class="mat" data-lv="${k}" ${REP.open[k]?"open":""}><summary>${LEVELS[k].label} 학습 자료 · ${fmtDate(ses.materials[k].createdAt)}</summary><div class="row" style="margin:10px 0"><button type="button" class="btn" data-dlmat="${k}">이 자료 내려받기 (${REP.view==="key"?"교사용":"학생용"})</button></div><div class="mpreview">${withOV(st, ses, ()=>sheetRaw(ses,k,REP.view==="key"))}</div></details>`).join("") : `<p class="muted small">아직 학습 자료를 만들지 않았어요.</p>`;
+  h += lvs.length ? lvs.map(k=>`<details class="mat" data-lv="${k}" ${REP.open[k]?"open":""}><summary>${LEVELS[k].label} 학습 자료 · ${fmtDate(ses.materials[k].createdAt)}</summary><div class="row" style="margin:10px 0"><button type="button" class="btn" data-dlmat="${k}">이 자료 내려받기 (${REP.view==="key"?"교사용":"학생용"})</button><button type="button" class="btn" data-pdfmat="${k}">PDF로 저장</button></div><div class="mpreview">${withOV(st, ses, ()=>sheetRaw(ses,k,REP.view==="key"))}</div></details>`).join("") : `<p class="muted small">아직 학습 자료를 만들지 않았어요.</p>`;
   return h + `</div>`;
 }
 function renderReport(){
@@ -968,8 +1064,9 @@ function renderReport(){
   const hist=(st.sessions||[]).map(s=>{
     const lv = s.matLevel&&LEVELS[s.matLevel] ? LEVELS[s.matLevel].label+" 학습" : (s.direction&&LEVELS[s.direction] ? LEVELS[s.direction].label+" 추천" : "진단 중");
     return `<button type="button" class="hrow" data-sid="${esc(s.id)}" aria-pressed="${REP.sel===s.id}"><span><b>${esc(s.title||"지문")}</b> <span class="small muted">${fmtDate(s.date)} · 지문 ${esc(s.passageLevel||"?")}${s.total!=null?" · "+s.total+"/8":""}</span></span><span class="chip ${s.matLevel?"":(s.direction?"rec":"gray")}">${esc(lv)}</span></button>`; }).join("");
-  rep.innerHTML = `<div class="row" style="justify-content:space-between"><div><span class="avatar" aria-hidden="true">${animal(st.nickname)}</span> <h2 style="display:inline">${esc(st.nickname)}</h2> <span class="chip gray">${esc(st.grade||"-")}</span> <span class="chip ${cur.cls}">${esc(cur.txt)}</span></div><button type="button" class="btn quiet" id="repBack">← 목록으로</button></div>
+  rep.innerHTML = `<div class="row" style="justify-content:space-between"><div><span class="avatar" aria-hidden="true">${avatarOf(st)}</span> <h2 style="display:inline">${esc(st.nickname)}</h2> ${st.klass?`<span class="chip gray">${esc(st.klass)}</span> `:""}<span class="chip gray">${esc(st.grade||"-")}</span> <span class="chip ${cur.cls}">${esc(cur.txt)}</span></div><button type="button" class="btn quiet" id="repBack">← 목록으로</button></div>
     <p class="small muted">첫 기록 ${fmtDate(st.createdAt)} · 마지막 활동 ${agoText(st.updatedAt)} · 기록 ${(st.sessions||[]).length}개</p>
+    ${growthHTML(st)}
     <div class="sec"><h3>기록 목록</h3><div class="hist">${hist||`<p class="muted small">기록이 없어요.</p>`}</div></div>
     ${sessionDetailHTML(st, ses)}
     <div class="row" style="border-top:1px solid var(--rule);padding-top:14px;justify-content:space-between"><span class="small muted">학생 기록은 선생님 코드가 있는 사람만 볼 수 있어요.</span><button type="button" class="btn quiet" id="repDel" style="color:var(--omr)">이 학생 기록 삭제</button></div>`;
@@ -979,6 +1076,10 @@ function renderReport(){
   rep.querySelectorAll("details.mat").forEach(d=> d.addEventListener("toggle", ()=>{ REP.open[d.dataset.lv]=d.open; }));
   const msg=()=>$("#repMsg");
   const dl=$("#repDl"); if(dl && ses && !ses.error) dl.onclick=()=> saveDoc(`${st.nickname}_${ses.title}_리포트.html`, reportDoc(st,ses), msg());
+  const dlp=$("#repDlPdf"); if(dlp && ses && !ses.error) dlp.onclick=()=> savePdf(`${st.nickname}_${ses.title}_리포트`, reportDoc(st,ses), msg());
+  const dtp=$("#repDlTestPdf"); if(dtp && ses && !ses.error) dtp.onclick=()=> savePdf(`${st.nickname}_${ses.title}_진단평가_교사용`, withOV(st,ses,()=>docWrap("진단 평가", testSheet(ses,true))), msg());
+  rep.querySelectorAll("[data-pdfmat]").forEach(b=> b.onclick=()=>{ const k=b.dataset.pdfmat, key=REP.view==="key";
+    savePdf(`${st.nickname}_${ses.title}_${LEVELS[k].label}_${key?"교사용":"학생용"}`, withOV(st,ses,()=>docWrap(`${LEVELS[k].label} 학습 자료`, sheetRaw(ses,k,key))), msg()); });
   const dt=$("#repDlTest"); if(dt && ses && !ses.error) dt.onclick=()=> saveDoc(`${st.nickname}_${ses.title}_진단평가_교사용.html`, withOV(st,ses,()=>docWrap("진단 평가", testSheet(ses,true))), msg());
   rep.querySelectorAll("[data-dlmat]").forEach(b=> b.onclick=()=>{ const k=b.dataset.dlmat, key=REP.view==="key";
     saveDoc(`${st.nickname}_${ses.title}_${LEVELS[k].label}_${key?"교사용":"학생용"}.html`, withOV(st,ses,()=>docWrap(`${LEVELS[k].label} 학습 자료`, sheetRaw(ses,k,key))), msg()); });
@@ -1017,6 +1118,20 @@ function route(){
 window.addEventListener("hashchange", route);
 
 /* ---------- boot ---------- */
+$("#emojis").innerHTML = EMOJIS.map(e=>`<button type="button" role="radio" aria-checked="false" data-e="${e}" aria-label="${e}">${e}</button>`).join("");
+$("#klass").value = lsGet("tlc_klass"); setEmoji(lsGet("tlc_emoji"));
+$("#emojis").addEventListener("click", ev=>{
+  const b=ev.target.closest("button[data-e]"); if(!b) return;
+  const on=b.getAttribute("aria-checked")==="true"; setEmoji(on?"":b.dataset.e); lsSet("tlc_emoji", on?"":b.dataset.e);
+  if(S.sessionId) queueSave(600);
+});
+$("#klass").addEventListener("input", ()=>{ lsSet("tlc_klass", klassVal()); if(S.sessionId) queueSave(1200); });
+$("#home").addEventListener("click",e=>{
+  e.preventDefault();
+  const working = S.test && !S.testIsExample && $("#rep").hidden;
+  if(working && !window.confirm("처음 화면으로 돌아갈까요?\n지금 진행 중인 내용은 화면에서 지워져요. (이미 저장된 기록은 선생님 목록에 남아 있어요.)")) return;
+  location.href = location.pathname;
+});
 go(1); updateWC();
 renderTW(); if(lsGet("tlc_teacher")) loadTW();
 if(location.hash) route();
