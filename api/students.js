@@ -35,6 +35,7 @@ const normNick = (n) => String(n || "").normalize("NFC").trim().replace(/\s+/g, 
 const studentKey = (nick) => "tlc:student:" + nick.toLowerCase();
 const sessKey = (nick, id) => "tlc:session:" + nick.toLowerCase() + ":" + id;
 const SET_KEY = "tlc:students";
+const EMOJIS = ["🐰","🐻","🐼","🦊","🐱","🐶","🐨","🐯","🐸","🐥","🐹","🦁","🦄","🐙","🐳","🦉","🐧","🐢","🦋","🍓","🍑","🍋","⭐","🌈"];
 
 // 호출 제한(서버 인스턴스 단위, 완벽하진 않지만 남용을 줄여 줍니다)
 const buckets = new Map();
@@ -95,6 +96,8 @@ module.exports = async function handler(req, res) {
       if (over("save", ip, 300)) return send(429, { error: "rate_limited" });
       const nickname = normNick(body.nickname);
       const grade = String(body.grade || "").slice(0, 4);
+      const klass = String(body.klass || "").normalize("NFC").trim().replace(/\s+/g, " ").slice(0, 20);
+      const emoji = EMOJIS.includes(body.emoji) ? body.emoji : "";
       const s = body.session;
       const id = s && String(s.id || "").replace(/[^0-9]/g, "").slice(0, 16);
       if (!nickname || !id) return send(400, { error: "bad_request" });
@@ -110,6 +113,8 @@ module.exports = async function handler(req, res) {
       let st = existing ? JSON.parse(existing) : { nickname, grade, createdAt: new Date().toISOString(), sessions: [] };
       st.nickname = nickname;
       if (grade) st.grade = grade;
+      st.klass = klass;
+      st.emoji = emoji;
       st.updatedAt = new Date().toISOString();
       const all = [summarize(clean, id), ...(st.sessions || []).filter((x) => x.id !== id)].sort((a, b) => Number(b.id) - Number(a.id));
       const dropped = all.slice(20);
@@ -132,7 +137,7 @@ module.exports = async function handler(req, res) {
         if (!keys.length) return send(200, { students: [] });
         const rows = (await redis(["MGET", ...keys])) || [];
         const students = rows.filter(Boolean).map((r) => JSON.parse(r)).map((st) => ({
-          nickname: st.nickname, grade: st.grade, createdAt: st.createdAt, updatedAt: st.updatedAt, sessions: (st.sessions || []).slice(0, 3),
+          nickname: st.nickname, grade: st.grade, klass: st.klass || "", emoji: st.emoji || "", createdAt: st.createdAt, updatedAt: st.updatedAt, sessions: (st.sessions || []).slice(0, 3),
         })).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
         return send(200, { students });
       }
